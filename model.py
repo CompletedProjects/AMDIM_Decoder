@@ -173,8 +173,10 @@ class Decoder(nn.Module):
         else:
             self.dim_1 = ftr_1.size(1)
 
-        self.block_glb_mlp_decoder = \
-            MLP_Decoder(self.dim_1, p = 0.2) # Nawid - Makes the MLP decoder block with 1024 hidden units
+        self.block_glb_cnn_decoder = CNN_Decoder(self.dim_1)
+
+        #self.block_glb_mlp_decoder = \
+        #    MLP_Decoder(self.dim_1, p = 0.2) # Nawid - Makes the MLP decoder block with 1024 hidden units
 
     def forward(self, ftr_1):
         '''
@@ -186,7 +188,8 @@ class Decoder(nn.Module):
         # Nawid - Always detach () -- send no grad into encoder !
         h_top_input = flatten(ftr_1).detach()
         # Nawid - Compute predictions
-        recon_output = self.block_glb_mlp_decoder(ftr_1)
+        recon_output = self.block_glb_cnn_decoder(ftr_1)
+        #recon_output = self.block_glb_mlp_decoder(ftr_1)
         return recon_output
 
 
@@ -222,7 +225,7 @@ class Model(nn.Module):
         # configure modules for classification with self-supervised features
         self.evaluator = Evaluator(n_classes, ftr_1=rkhs_1)
 
-        # Nawid - Configure moduel for decoder with self-supervised features
+        # Nawid - Configure module for decoder with self-supervised features
         self.decoder = Decoder(ftr_1 =rkhs_1)
 
         # gather lists of self-supervised and classifier modules
@@ -451,7 +454,54 @@ class MLP_Decoder(nn.Module): # Nawid- Making a basic decoder
         # Nawid -  Need to reshape the output also
         return reconstruction
 
-class FakeRKHSConvNet(nn.Module): # Nawid - Convoltuional neural net
+class CNN_Decoder(nn.Module):
+    def __init__(self, n_decoder_input, n_decoder_hidden = 1024, original_size = 64, original_channels = 3):
+        super(CNN_Decoder,self).__init__()
+        self.n_decoder_input = n_decoder_input
+        self.n_decoder_hidden = n_decoder_input
+        self.original_size = original_size
+        self.original_channels = original_channels
+        self.decoder_block_forward = nn.Sequential(
+            Flatten(),
+            nn.Linear(n_decoder_input, n_decoder_hidden, bias = False),
+            nn.BatchNorm1d(n_decoder_hidden),
+            nn.ReLU(inplace=True)
+        )
+        self.conv_block = nn.Sequential(
+            nn.ConvTranspose2d(16, 32, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(32, 16, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(16, 16, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+
+            nn.ConvTranspose2d(16, self.original_channels, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False),
+            nn.BatchNorm2d(self.original_channels),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(self.original_channels, self.original_channels, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.BatchNorm2d(self.original_channels),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self,x):
+        reconstruction = self.decoder_block_forward(x)
+        #print('Decoder is being used',x.size())
+        reconstruction = reconstruction.view(-1, 16, 8, 8)
+        #print(' After MLP block',reconstruction.size())
+        reconstruction = self.conv_block(reconstruction)
+        #print('After conv block',reconstruction.size())
+        # Nawid -  Need to reshape the output also
+        return reconstruction
+
+
+class FakeRKHSConvNet(nn.Module): # Nawid - Convoltuional neural net - This computes the embedding function
     def __init__(self, n_input, n_output, use_bn=False):
         super(FakeRKHSConvNet, self).__init__()
         self.conv1 = nn.Conv2d(n_input, n_output, kernel_size=1, stride=1,
