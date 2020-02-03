@@ -59,7 +59,7 @@ def _train(model, optimizer, scheduler, checkpointer, epochs, train_loader,
             total_updates += 1
             epoch_updates += 1
             if (total_updates % 100) == 0:
-                save_reconstructions(images1,image_reconstructions)
+                save_reconstructions(images1,image_reconstructions,log_dir)
 
                 time_stop = time.time()
                 spu = (time_stop - time_start) / 100.
@@ -71,7 +71,7 @@ def _train(model, optimizer, scheduler, checkpointer, epochs, train_loader,
         # step learning rate scheduler
         scheduler.step(epoch)
         # record diagnostics
-        test_decoder_model(model, test_loader, device, epoch_stats, max_evals=500000) # Nawid - NEED TO CHANGE FOR DECODER I BELIEVE
+        test_decoder_model(model, test_loader, device, epoch_stats,log_dir,max_evals=500000) # Nawid - NEED TO CHANGE FOR DECODER I BELIEVE
         epoch_str = epoch_stats.pretty_string(ignore=model.tasks)
         diag_str = '{0:d}: {1:s}'.format(epoch, epoch_str)
         print(diag_str)

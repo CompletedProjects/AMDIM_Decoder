@@ -8,7 +8,7 @@ from costs import loss_MSE
 from PIL import Image # Nawid-Used to save the image
 
 
-def test_model(model, test_loader, device, stats, max_evals=200000):
+def test_model(model, test_loader, device, stats, output_dir, max_evals=200000): # Nawid - Added output directory to here to allow the saved reconstructions to be saved in a certain place
     '''
     Evaluate accuracy on test set
     '''
@@ -45,7 +45,7 @@ def test_model(model, test_loader, device, stats, max_evals=200000):
     stats.update('test_accuracy_mlp_classifier', acc_glb_mlp, n=1)
     stats.update('test_accuracy_linear_classifier', acc_glb_lin, n=1)
 
-def test_decoder_model(model, test_loader, device, stats, max_evals=200000):
+def test_decoder_model(model, test_loader, device, stats,output_dir, max_evals=200000):
     # warm up batchnorm stats based on current model
     _warmup_batchnorm(model, test_loader, device, batches = 50, train_loader = False)
 
@@ -70,10 +70,10 @@ def test_decoder_model(model, test_loader, device, stats, max_evals=200000):
     model.train()
     # record stats in the provided stat tracker
     stats.update('test_loss_decoder', average_test_loss, n = 1)
-    save_reconstructions(images, image_reconstructions, training = False)
+    save_reconstructions(images, image_reconstructions,output_dir, training = False)
 
 
-def save_reconstructions(original_images, reconstructions,training = True):
+def save_reconstructions(original_images, reconstructions,output_directory,training = True):
     original_images = torch.clamp(original_images, 0, 1) # Nawid - Clamp values between 0 and 1
     original_images = original_images.permute(0, 2, 3, 1).detach().cpu().numpy()
 
@@ -84,10 +84,13 @@ def save_reconstructions(original_images, reconstructions,training = True):
     reconstructions_first10 = reconstructions[0:10]
     columns = np.concatenate([reconstructions_first10, original_images_first10], axis=-2)
     columns = np.concatenate(columns, axis=0)
+
+    print('output_directory',output_directory)
+
     if training:
-        Image.fromarray((columns * 255).astype('uint8')).save('training_reconstructions_rgb.png') # Nawid - Changes the valeus back to 255 and integers and save the reconstructions
+        Image.fromarray((columns * 255).astype('uint8')).save(output_directory +'/training_reconstructions_rgb.png') # Nawid - Changes the valeus back to 255 and integers and save the reconstructions
     else:
-        Image.fromarray((columns * 255).astype('uint8')).save('testing_reconstructions_rgb.png') # Nawid - Changes the valeus back to 255 and integers and save the reconstructions
+        Image.fromarray((columns * 255).astype('uint8')).save(output_directory +'/testing_reconstructions_rgb.png') # Nawid - Changes the valeus back to 255 and integers and save the reconstructions
 
 
 def _warmup_batchnorm(model, data_loader, device, batches=100, train_loader=False): #Nawid - Two different behaviours if it is in training mode or testing mode I believe

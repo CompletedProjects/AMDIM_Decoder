@@ -54,6 +54,7 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
             loss_g2l = (res_dict['g2l_1t5'] +
                         res_dict['g2l_1t7'] +
                         res_dict['g2l_5t5']) # Nawid - loss for the global to local features predictions
+
             loss_inf = loss_g2l + res_dict['lgt_reg']
 
             if model.decoder_training:
@@ -80,7 +81,7 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
                     pg['lr'] = lr_scale * lr_real
 
             # reset gradient accumlators and do backprop
-            loss_opt = loss_inf + auxiliary_loss # Nawid - Total loss is the loss from the global to local prediction as well as the loss from the classifier predictions
+            loss_opt = auxiliary_loss #+loss_inf   # Nawid - Total loss is the loss from the global to local prediction as well as the loss from the classifier predictions
             optim_inf.zero_grad()
             mixed_precision.backward(loss_opt, optim_inf)  # backwards with fp32/fp16 awareness
             optim_inf.step()
@@ -111,7 +112,7 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
                 # record diagnostics
                 eval_start = time.time()
                 fast_stats = AverageMeterSet() # Nawid - This is short term stats which are reset regularly
-                test(model, test_loader, device, fast_stats, max_evals=100000) # Nawd - test is chosen to be test_decoder_model or test_model at the start of the function based on whether decoder training is occuring or not
+                test(model, test_loader, device, fast_stats,log_dir, max_evals=100000) # Nawd - test is chosen to be test_decoder_model or test_model at the start of the function based on whether decoder training is occuring or not
 
                 stat_tracker.record_stats(
                     fast_stats.averages(total_updates, prefix='fast/')) # Nawid - This is used to record the data in tensorboard, where the average of the different values are placed in tensorboard,total_updates is the index which is used to place information in tensorbard i believe
@@ -123,7 +124,7 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
 
         # update learning rate
         scheduler_inf.step(epoch)
-        test(model, test_loader, device, epoch_stats, max_evals=500000)
+        test(model, test_loader, device, epoch_stats,log_dir, max_evals=500000)
         epoch_str = epoch_stats.pretty_string(ignore=model.tasks)
         diag_str = '{0:d}: {1:s}'.format(epoch, epoch_str)
         print(diag_str)

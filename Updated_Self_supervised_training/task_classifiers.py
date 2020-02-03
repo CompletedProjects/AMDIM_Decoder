@@ -62,7 +62,7 @@ def _train(model, optimizer, scheduler, checkpointer, epochs, train_loader,
         # step learning rate scheduler
         scheduler.step(epoch)
         # record diagnostics
-        test_model(model, test_loader, device, epoch_stats, max_evals=500000) # Nawid - Testing evaluation I believe
+        test_model(model, test_loader, device, epoch_stats,log_dir, max_evals=500000) # Nawid - Testing evaluation I believe
         epoch_str = epoch_stats.pretty_string(ignore=model.tasks)
         diag_str = '{0:d}: {1:s}'.format(epoch, epoch_str)
         print(diag_str)
