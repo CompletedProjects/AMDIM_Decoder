@@ -173,7 +173,9 @@ class Decoder(nn.Module):
         else:
             self.dim_1 = ftr_1.size(1)
 
-        self.block_glb_cnn_decoder = CNN_Decoder(self.dim_1)
+        #self.block_glb_cnn_decoder = CNN_Decoder(self.dim_1)
+        self.block_glb_resnet_decoder = Resnet_Decoder(self.dim_1) # Nawid - Instantiates the decoder
+
 
         #self.block_glb_mlp_decoder = \
         #    MLP_Decoder(self.dim_1, p = 0.2) # Nawid - Makes the MLP decoder block with 1024 hidden units
@@ -188,7 +190,8 @@ class Decoder(nn.Module):
         # Nawid - Always detach () -- send no grad into encoder !
         h_top_input = flatten(ftr_1).detach()
         # Nawid - Compute predictions
-        recon_output = self.block_glb_cnn_decoder(ftr_1)
+        recon_output = self.block_glb_resnet_decoder(ftr_1)
+        #recon_output = self.block_glb_cnn_decoder(ftr_1)
         #recon_output = self.block_glb_mlp_decoder(ftr_1)
         return recon_output
 
@@ -460,7 +463,7 @@ class CNN_Decoder(nn.Module):
     def __init__(self, n_decoder_input, n_decoder_hidden = 1024, original_size = 64, original_channels = 3):
         super(CNN_Decoder,self).__init__()
         self.n_decoder_input = n_decoder_input
-        self.n_decoder_hidden = n_decoder_input
+        self.n_decoder_hidden = n_decoder_hidden
         self.original_size = original_size
         self.original_channels = original_channels
         self.decoder_block_forward = nn.Sequential(
@@ -502,6 +505,45 @@ class CNN_Decoder(nn.Module):
         # Nawid -  Need to reshape the output also
         return reconstruction
 
+class Resnet_Decoder(nn.Module):
+    def __init__(self, n_decoder_input, n_decoder_hidden = 1024, in_channels =16, out_channels = 3):
+        super(Resnet_Decoder,self).__init__()
+        self.n_decoder_input = n_decoder_input
+        self.n_decoder_hidden = n_decoder_hidden
+        self.decoder_block_forward = nn.Sequential(
+            Flatten(),
+            nn.Linear(n_decoder_input, n_decoder_hidden, bias = False),
+            nn.BatchNorm1d(n_decoder_hidden),
+            nn.ReLU(inplace=True)
+        )
+
+        self.residual1 = _make_residual(in_channels) # Nawid - Performs a 3x3 followed by a 1x1 convolution
+        self.residual2 = _make_residual(in_channels)
+        self.conv1 = nn.ConvTranspose2d(in_channels, in_channels, 4, stride=2, padding=1) # Nawid - Increases the size
+        self.conv2 = nn.ConvTranspose2d(in_channels, in_channels, 4, stride=2, padding=1) # Nawid - Increases the size further
+        self.residual3 = _make_residual(in_channels)
+        self.conv3 = nn.ConvTranspose2d(in_channels, out_channels, 4, stride=2, padding=1) # Nawid - Increases the size further
+
+    def forward(self, x):
+        x = self.decoder_block_forward(x)
+        x = x.view(-1, 16, 8, 8)
+        x = x + self.residual1(x)
+        x = x + self.residual2(x)
+        x = F.relu(x)
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = self.residual3(x)
+        reconstruction = self.conv3(x)
+        return reconstruction
+
+def _make_residual(channels): # Nawid- Performs a 3x3 convolution followed by a 1x1 convolution - The 3x3 convolution is padded and so the overall shape is the same.
+    return nn.Sequential(
+        nn.ReLU(),
+        nn.Conv2d(channels, channels, 3, padding=1),
+        nn.ReLU(),
+        nn.Conv2d(channels, channels, 1),
+    )
 
 class FakeRKHSConvNet(nn.Module): # Nawid - Convoltuional neural net - This computes the embedding function
     def __init__(self, n_input, n_output, use_bn=False):

@@ -110,11 +110,11 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
             if (total_updates % 500) == 0:
                 # record diagnostics
                 eval_start = time.time()
-                fast_stats = AverageMeterSet()
+                fast_stats = AverageMeterSet() # Nawid - This is short term stats which are reset regularly
                 test(model, test_loader, device, fast_stats, max_evals=100000) # Nawd - test is chosen to be test_decoder_model or test_model at the start of the function based on whether decoder training is occuring or not
 
                 stat_tracker.record_stats(
-                    fast_stats.averages(total_updates, prefix='fast/'))
+                    fast_stats.averages(total_updates, prefix='fast/')) # Nawid - This is used to record the data in tensorboard, where the average of the different values are placed in tensorboard,total_updates is the index which is used to place information in tensorbard i believe
                 eval_time = time.time() - eval_start
                 stat_str = fast_stats.pretty_string(ignore=model.tasks)
                 stat_str = '-- {0:d} updates, eval_time {1:.2f}: {2:s}'.format(
@@ -128,7 +128,7 @@ def _train(model, optim_inf, scheduler_inf, checkpointer, epochs,
         diag_str = '{0:d}: {1:s}'.format(epoch, epoch_str)
         print(diag_str)
         sys.stdout.flush()
-        stat_tracker.record_stats(epoch_stats.averages(epoch, prefix='costs/'))
+        stat_tracker.record_stats(epoch_stats.averages(epoch, prefix='costs/')) # Nawid - This is used to update long-term stats which are used for a long-period of time
         checkpointer.update(epoch + 1, total_updates)
 
 

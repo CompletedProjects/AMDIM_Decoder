@@ -42,13 +42,13 @@ class AverageMeterSet: # Nawid - Calculates averages
         return {prefix + name: (avg, idx) for name, avg in self.avgs.items()}
 
 
-class StatTracker:
+class StatTracker: # Nawid- This is used to update information in tensorboard logger
     '''
     Helper class for collecting per-episode rewards and other stats during
     training.
     '''
 
-    def __init__(self, log_name=None, log_dir=None):
+    def __init__(self, log_name=None, log_dir=None): # Nawid - This instantiates the tensorboard logger
         assert((log_name is None) or (log_dir is None))
         if log_dir is None:
             self.writer = SummaryWriter(comment=log_name)
@@ -59,10 +59,10 @@ class StatTracker:
             except:
                 self.writer = SummaryWriter(log_dir=log_dir)
 
-    def close(self):
+    def close(self): # Nawid - This closes the logger
         self.writer.close()
 
-    def record_stats(self, stat_dict): # Nawid- Upload stats in tensorboard
+    def record_stats(self, stat_dict): # Nawid- Upload stats in tensorboard  such as the loss values for specific things
         '''
         Record some named stats in the underlying tensorboard log.
         '''
