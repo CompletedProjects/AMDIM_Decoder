@@ -99,6 +99,7 @@ class TransformsC10: # Nawid - Transforms Cifar10
             RandomTranslateWithReflect(4)], p=0.8)
         rnd_gray = transforms.RandomGrayscale(p=0.25)
         # main transform for self-supervised training
+        '''
         self.train_transform = transforms.Compose([
             img_jitter,
             col_jitter,
@@ -106,6 +107,14 @@ class TransformsC10: # Nawid - Transforms Cifar10
             transforms.ToTensor(),
             normalize
         ])
+        '''
+        # transform for testing
+        self.train_transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize
+        ])
+
+        
         # transform for testing
         self.test_transform = transforms.Compose([
             transforms.ToTensor(),

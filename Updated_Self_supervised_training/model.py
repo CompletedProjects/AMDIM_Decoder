@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from mixed_precision import maybe_half
 from utils import flatten, random_locs_2d, Flatten
 from costs import LossMultiNCE
+from vq_vae_decoder import VQ_VAE_Decoder # Nawid - Importing the decoder class
 
 
 def has_many_gpus(): # Nawid - Says how many gpus are present
@@ -174,7 +175,8 @@ class Decoder(nn.Module):
             self.dim_1 = ftr_1.size(1)
 
         #self.block_glb_cnn_decoder = CNN_Decoder(self.dim_1)
-        self.block_glb_resnet_decoder = Resnet_Decoder(self.dim_1) # Nawid - Instantiates the decoder
+        #self.block_glb_resnet_decoder = Resnet_Decoder(self.dim_1) # Nawid - Instantiates the decoder
+        self.block_glb_vqvae_decoder = VQ_VAE_Decoder(4,32,3)
 
 
         #self.block_glb_mlp_decoder = \
@@ -190,7 +192,9 @@ class Decoder(nn.Module):
         # Nawid - Always detach () -- send no grad into encoder !
         h_top_input = flatten(ftr_1).detach()
         # Nawid - Compute predictions
-        recon_output = self.block_glb_resnet_decoder(ftr_1)
+        recon_output = self.block_glb_vqvae_decoder(ftr_1)
+        #recon_output = self.block_glb_resnet_decoder(ftr_1)
+
         #recon_output = self.block_glb_cnn_decoder(ftr_1)
         #recon_output = self.block_glb_mlp_decoder(ftr_1)
         return recon_output
@@ -257,6 +261,8 @@ class Model(nn.Module):
             rkhs_1, rkhs_5, rkhs_7 = self.encoder(x) #Nawid -Encodes the image
         if use_eval:
             self.train()
+        #print('rkhs1 size',rkhs_1.size())
+        #print('rkhs_5 size', rkhs_5.size())
         return maybe_half(rkhs_1), maybe_half(rkhs_5), maybe_half(rkhs_7)
 
     def reset_evaluator(self, n_classes=None):
@@ -325,6 +331,8 @@ class Model(nn.Module):
 
         # run augmented image pairs through the encoder
         r1_x1, r5_x1, r7_x1 = self.encoder(x1) # Nawid - Features of image 1 - no grad is false so the gradients go to the network
+        #print('r1_x1 size',r1_x1.size())
+        #print('r5_x1 size',r5_x1.size())
         r1_x2, r5_x2, r7_x2 = self.encoder(x2) # Nawid - features of image 2 ( augmented image)
 
         # hack for redistributing workload in highly-multi-gpu setting
